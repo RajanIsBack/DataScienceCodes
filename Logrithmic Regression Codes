@@ -1,0 +1,65 @@
+#Logistic Regression for Direct Marketing Data set
+#Direct market wants to identify their good and bad data  
+#customer whose expenditure is more than  average amount is a good customer
+#accuracy matrix using irr and caret
+#good customer :1 bad customer: 0
+#target variable should not have null
+
+setwd("C:\\Workplace\\R submissions\\Datasets\\Logistic Regression Direct Marketing Dataset\\")
+dm<- read.csv("dm-3.csv")
+install.packages("gains")
+library(gains)
+library(dplyr) # for data manipulation
+install.packages("irr")
+library(irr)   #for making accuracy matrix
+install.packages("caret")
+library(caret)
+head(dm)
+
+# for creating target variable which identifies good or bad customer 
+dm%>%mutate(Target=ifelse(AmountSpent>mean(AmountSpent),1,0))->dm
+head(dm)
+dm%>%select(-AmountSpent)->dm
+dim(dm)
+head(dm)
+summary(dm)
+str(dm)
+dm$History1<-ifelse(is.na(dm$History),"Missing",as.character(dm$History))
+dm$History1<-as.factor(dm$History1)
+summary(dm$History1)
+#treating children and catalog as categorical variable
+dm$Children<-as.factor(dm$Children)
+dm$Catalogs<-as.factor(dm$Catalogs)
+dm<-dm[,-8]
+#splititng into training and test samples.You have to create index first and then use that index for train and test sets
+set.seed(200)
+index<-sample(nrow(dm),0.70*nrow(dm),replace=F)
+train<-dm[index,]
+test<-dm[-index,]
+
+#Build the first model using all the variables 
+#glm generalised linear model family="binomial" for glm means logistic regression model
+#excluding custid from trining dataset
+#Target variable is dependent variable and all other is independent variable
+
+model1<-glm(Target~.,data=train[,-9],family="binomial") 
+summary(model1)
+#checking the p value and three stars against them we can remove variable which are not significant
+#We can do stepwise regression in R using step function
+step(model1,direction="both")
+#Call:  glm(formula = Target ~ Age + Location + Salary + Children + Catalogs + 
+#History1, family = "binomial", data = train[, -9])
+model1<-glm(formula = Target ~ Age + Location + Salary + Children + Catalogs + History1, family = "binomial", data = train)
+summary(model1)
+# The non significant variable is to be removed by  replacing their values with dummy values
+test$AgeOld_d<-ifelse(test$Age=="Old",1,0)
+test$History1Low_d<-ifelse(test$History1=="Low",1,0)
+test$History1Missing_d<-ifelse(test$History1=="Missing",1,0)
+test$Childern1_d<-ifelse(test$Children=="1",1,0)
+model3<-glm(formula = Target ~ AgeOld_d + Location + Salary + Childern1_d + Catalogs + History1Low_d+History1Missing_d, family = "binomial", data = train)
+summary(model3)
+#residfual deviance should drop as compared to true deviance .Independent variables are good 
+#AUC of model sshould be compared wit other samples AIC and Higher AIC should be selected
+#ROCR curve is used to  validate model
+
+
